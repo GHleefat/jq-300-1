@@ -5,10 +5,10 @@ import type { Difficulty } from '../types/game'
 
 const TICKET_PRICES = [168, 198, 298, 398, 498, 598]
 
-const DIFFICULTIES: { value: Difficulty; label: string; desc: string; emoji: string }[] = [
-  { value: 'easy', label: '轻松模式', desc: '3分钟，慢慢吃', emoji: '😌' },
-  { value: 'normal', label: '普通模式', desc: '2分钟，刚刚好', emoji: '😊' },
-  { value: 'hard', label: '挑战模式', desc: '90秒，手速要快', emoji: '🔥' },
+const DIFFICULTIES: { value: Difficulty; label: string; desc: string; subdesc: string; emoji: string }[] = [
+  { value: 'easy', label: '轻松模式', desc: '3分钟', subdesc: '菜被拿得慢', emoji: '😌' },
+  { value: 'normal', label: '普通模式', desc: '2分钟', subdesc: '正常抢菜速度', emoji: '😊' },
+  { value: 'hard', label: '挑战模式', desc: '90秒', subdesc: '菜被抢得飞快', emoji: '🔥' },
 ]
 
 export function StartPage() {
@@ -91,8 +91,11 @@ export function StartPage() {
                 <p className={`font-bold font-display ${difficulty === d.value ? 'text-white' : 'text-gray-800'}`}>
                   {d.label}
                 </p>
-                <p className={`text-xs ${difficulty === d.value ? 'text-white/80' : 'text-gray-500'}`}>
+                <p className={`text-sm font-bold ${difficulty === d.value ? 'text-white/90' : 'text-gray-600'}`}>
                   {d.desc}
+                </p>
+                <p className={`text-xs ${difficulty === d.value ? 'text-white/70' : 'text-gray-500'}`}>
+                  {d.subdesc}
                 </p>
               </button>
             ))}
@@ -118,9 +121,24 @@ export function StartPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary-500">•</span>
+              <span><span className="font-bold text-danger">热门菜品会被其他食客抢走！</span>🔥爆款菜去晚了就没了</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-primary-500">•</span>
               <span>吃的总金额超过门票价格即为胜利！</span>
             </li>
           </ul>
+          <div className="mt-4 pt-3 border-t border-primary-200 flex flex-wrap gap-3 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+              🔥 爆款抢手 - 被拿得最快
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+              ⭐ 热销 - 比较抢手
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+              ✨ 人气 - 会慢慢减少
+            </span>
+          </div>
         </div>
 
         <button onClick={handleStart} className="btn-primary w-full text-xl py-4">

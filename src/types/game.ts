@@ -2,6 +2,8 @@ export type FoodCategory = 'seafood' | 'meat' | 'staple' | 'dessert' | 'drink' |
 
 export type Difficulty = 'easy' | 'normal' | 'hard'
 
+export type RarityLevel = 'legendary' | 'rare' | 'uncommon' | 'common'
+
 export interface Food {
   id: string
   name: string
@@ -11,6 +13,8 @@ export interface Food {
   satiety: number
   stock: number
   timeCost: number
+  rarity: RarityLevel
+  consumptionRate: number
 }
 
 export interface Station {

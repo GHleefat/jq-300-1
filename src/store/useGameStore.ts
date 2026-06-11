@@ -5,8 +5,15 @@ import {
   START_POSITION,
   GAME_DURATION,
   MAX_STOMACH,
+  DIFFICULTY_CONSUMPTION_MULTIPLIER,
 } from '../data/gameData'
 import { calculateMoveTime } from '../utils/gameUtils'
+
+interface StockChangeEvent {
+  foodId: string
+  stationId: string
+  timestamp: number
+}
 
 interface GameStore {
   difficulty: Difficulty
@@ -20,6 +27,8 @@ interface GameStore {
   isMoving: boolean
   activeStationId: string | null
   isGameEnded: boolean
+  consumptionCounters: Record<string, number>
+  recentStockChanges: StockChangeEvent[]
 
   setDifficulty: (d: Difficulty) => void
   setTicketPrice: (p: number) => void
@@ -39,6 +48,16 @@ function deepCloneStations(): Station[] {
   }))
 }
 
+function initConsumptionCounters(): Record<string, number> {
+  const counters: Record<string, number> = {}
+  STATIONS.forEach(station => {
+    station.foods.forEach(food => {
+      counters[food.id] = Math.random() * food.consumptionRate * 0.5
+    })
+  })
+  return counters
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   difficulty: 'normal',
   ticketPrice: 298,
@@ -51,6 +70,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   isMoving: false,
   activeStationId: null,
   isGameEnded: false,
+  consumptionCounters: initConsumptionCounters(),
+  recentStockChanges: [],
 
   setDifficulty: (d) => set({ difficulty: d }),
   setTicketPrice: (p) => set({ ticketPrice: p }),
@@ -67,6 +88,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       isMoving: false,
       activeStationId: null,
       isGameEnded: false,
+      consumptionCounters: initConsumptionCounters(),
+      recentStockChanges: [],
     })
   },
 
@@ -84,15 +107,74 @@ export const useGameStore = create<GameStore>((set, get) => ({
     isMoving: false,
     activeStationId: null,
     isGameEnded: false,
+    consumptionCounters: initConsumptionCounters(),
+    recentStockChanges: [],
   }),
 
   tick: () => {
-    const { timeRemaining, isGameEnded } = get()
+    const { timeRemaining, isGameEnded, stations, difficulty, consumptionCounters, recentStockChanges } = get()
     if (isGameEnded) return
+
     if (timeRemaining <= 1) {
       set({ timeRemaining: 0, isGameEnded: true })
+      return
+    }
+
+    const multiplier = DIFFICULTY_CONSUMPTION_MULTIPLIER[difficulty]
+    const newCounters = { ...consumptionCounters }
+    let newStations = stations
+    const newChanges: StockChangeEvent[] = []
+
+    stations.forEach(station => {
+      station.foods.forEach(food => {
+        if (food.consumptionRate <= 0) return
+        if (food.stock <= 0) return
+
+        const adjustedRate = food.consumptionRate * multiplier
+        newCounters[food.id] = (newCounters[food.id] || 0) + 1
+
+        if (newCounters[food.id] >= adjustedRate) {
+          newCounters[food.id] = 0
+          newChanges.push({
+            foodId: food.id,
+            stationId: station.id,
+            timestamp: Date.now(),
+          })
+        }
+      })
+    })
+
+    if (newChanges.length > 0) {
+      newStations = stations.map(station => ({
+        ...station,
+        foods: station.foods.map(food => {
+          const wasChanged = newChanges.find(c => c.foodId === food.id)
+          if (wasChanged && food.stock > 0) {
+            return { ...food, stock: food.stock - 1 }
+          }
+          return food
+        }),
+      }))
+
+      const now = Date.now()
+      const filteredChanges = [...recentStockChanges, ...newChanges]
+        .filter(c => now - c.timestamp < 1500)
+
+      set({
+        timeRemaining: timeRemaining - 1,
+        stations: newStations,
+        consumptionCounters: newCounters,
+        recentStockChanges: filteredChanges,
+      })
     } else {
-      set({ timeRemaining: timeRemaining - 1 })
+      const now = Date.now()
+      const filteredChanges = recentStockChanges.filter(c => now - c.timestamp < 1500)
+
+      set({
+        timeRemaining: timeRemaining - 1,
+        consumptionCounters: newCounters,
+        recentStockChanges: filteredChanges,
+      })
     }
   },
 

@@ -1,9 +1,9 @@
-import { X, Clock, UtensilsCrossed, Wallet, Package } from 'lucide-react'
+import { X, Clock, UtensilsCrossed, Wallet, Package, Flame } from 'lucide-react'
 import { useGameStore } from '../store/useGameStore'
-import { CATEGORY_COLORS, MAX_STOMACH } from '../data/gameData'
+import { CATEGORY_COLORS, MAX_STOMACH, RARITY_INFO } from '../data/gameData'
 
 export function FoodModal() {
-  const { activeStationId, stations, pickFood, closeStation, stomachCapacity, timeRemaining } = useGameStore()
+  const { activeStationId, stations, pickFood, closeStation, stomachCapacity, timeRemaining, recentStockChanges } = useGameStore()
 
   if (!activeStationId) return null
 
@@ -11,6 +11,10 @@ export function FoodModal() {
   if (!station) return null
 
   const colors = CATEGORY_COLORS[station.category]
+
+  const isRecentlyChanged = (foodId: string) => {
+    return recentStockChanges.some(c => c.foodId === foodId)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
@@ -52,17 +56,34 @@ export function FoodModal() {
               const willOverflow = stomachCapacity + food.satiety > MAX_STOMACH
               const noTime = food.timeCost >= timeRemaining
               const isDisabled = isSoldOut || willOverflow || noTime
+              const rarityInfo = RARITY_INFO[food.rarity]
+              const hasRecentChange = isRecentlyChanged(food.id)
+              const isLowStock = food.stock > 0 && food.stock <= 3
 
               return (
                 <div
                   key={food.id}
-                  className={isDisabled ? 'food-card-soldout' : 'food-card'}
+                  className={`${isDisabled ? 'food-card-soldout' : 'food-card'} relative overflow-hidden
+                    ${hasRecentChange && !isSoldOut ? 'ring-2 ring-danger animate-pulse-fast' : ''}`}
                   onClick={() => !isDisabled && pickFood(food.id, station.id)}
                 >
+                  {food.rarity !== 'common' && (
+                    <div className={`absolute top-2 right-2 ${rarityInfo.bgColor} ${rarityInfo.color} px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1`}>
+                      {rarityInfo.icon && <span>{rarityInfo.icon}</span>}
+                      {rarityInfo.label}
+                    </div>
+                  )}
+
+                  {hasRecentChange && !isSoldOut && (
+                    <div className="absolute top-2 left-2 bg-danger text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-bounce">
+                      被抢走了!
+                    </div>
+                  )}
+
                   <div className="flex items-start gap-3">
                     <span className="text-4xl">{food.emoji}</span>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-gray-800 truncate">{food.name}</h4>
+                      <h4 className="font-bold text-gray-800 truncate pr-20">{food.name}</h4>
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         <span className="inline-flex items-center gap-1 text-xs bg-success/10 text-success px-2 py-0.5 rounded-full">
                           <Wallet className="w-3 h-3" /> ¥{food.price}
@@ -75,7 +96,10 @@ export function FoodModal() {
                         </span>
                       </div>
                       <div className="mt-2 flex items-center justify-between">
-                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${isSoldOut ? 'bg-gray-200 text-gray-500' : 'bg-purple-100 text-purple-700'}`}>
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium
+                          ${isSoldOut ? 'bg-gray-200 text-gray-500' : ''}
+                          ${!isSoldOut && isLowStock ? 'bg-danger/20 text-danger' : ''}
+                          ${!isSoldOut && !isLowStock ? 'bg-purple-100 text-purple-700' : ''}`}>
                           <Package className="w-3 h-3" />
                           {isSoldOut ? '已售罄' : `剩余 ${food.stock} 份`}
                         </span>
@@ -83,6 +107,18 @@ export function FoodModal() {
                           <span className="text-xs font-bold text-primary-600">点击取餐 →</span>
                         )}
                       </div>
+
+                      {food.consumptionRate > 0 && !isSoldOut && (
+                        <div className="mt-2 flex items-center gap-1 text-[10px] text-gray-500">
+                          <Flame className="w-3 h-3 text-orange-500" />
+                          <span>
+                            {food.consumptionRate <= 10 ? '超抢手！手慢无' :
+                             food.consumptionRate <= 20 ? '热销中，去晚就没了' :
+                             food.consumptionRate <= 40 ? '人气不错，会慢慢减少' :
+                             '充足，暂时不用担心'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -99,6 +135,11 @@ export function FoodModal() {
         </div>
 
         <div className="p-4 border-t border-gray-100 bg-gray-50">
+          <div className="mb-3 flex flex-wrap gap-2 text-xs text-gray-500">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400" /> 🔥 爆款抢手 - 被拿得最快</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400" /> ⭐ 热销 - 比较抢手</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400" /> ✨ 人气 - 会慢慢减少</span>
+          </div>
           <button onClick={closeStation} className="btn-secondary w-full">
             继续探索餐厅
           </button>
